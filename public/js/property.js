@@ -40,6 +40,31 @@
     return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  /* ── Facing direction extracted from amenities ── */
+  const FACING_ICONS = {
+    'north':'⬆️','south':'⬇️','east':'➡️','west':'⬅️',
+    'north-east':'↗️','north east':'↗️','northeast':'↗️',
+    'north-west':'↖️','north west':'↖️','northwest':'↖️',
+    'south-east':'↘️','south east':'↘️','southeast':'↘️',
+    'south-west':'↙️','south west':'↙️','southwest':'↙️',
+  };
+  function getFacing(amenities) {
+    if (!amenities || !amenities.length) return null;
+    // Strict pattern: the ENTIRE amenity string must be a direction phrase,
+    // optionally followed by "facing" — nothing else.
+    // e.g. "North Facing", "East-Facing", "North-West", "South West Facing"
+    // Rejects: "North east side of the city", "Near East Gate", etc.
+    const STRICT = /^(north[\s-]?east|north[\s-]?west|south[\s-]?east|south[\s-]?west|north|south|east|west)[\s-]?(facing)?$/i;
+    for (const a of amenities) {
+      const m = a.trim().match(STRICT);
+      if (m) {
+        const k = m[1].toLowerCase().replace(/\s+/g, '-');
+        return { label: a, icon: FACING_ICONS[k] || '🧭', key: k };
+      }
+    }
+    return null;
+  }
+
   /* ── Skeleton ── */
   function renderSkeleton() {
     root.innerHTML = `
@@ -176,11 +201,16 @@
 
     const plans = (p.floorPlanImages||[]).filter(Boolean);
 
-    const amenitiesHTML = (p.amenities&&p.amenities.length) ? `
+    const facing = getFacing(p.amenities);
+    const displayAmenities = facing
+      ? (p.amenities || []).filter(a => a !== facing.label)
+      : (p.amenities || []);
+
+    const amenitiesHTML = (displayAmenities && displayAmenities.length) ? `
       <div class="prop-block">
         <div class="prop-block-title">Amenities</div>
         <div class="amenities-grid">
-          ${p.amenities.map(a=>`<div class="amenity-chip"><span class="amenity-icon">${amenityIcon(a)}</span><span>${esc(a)}</span></div>`).join('')}
+          ${displayAmenities.map(a=>`<div class="amenity-chip"><span class="amenity-icon">${amenityIcon(a)}</span><span>${esc(a)}</span></div>`).join('')}
         </div>
       </div>` : '';
 
@@ -227,11 +257,12 @@
             ${buildGallery(p)}
 
             <!-- Stats -->
-            <div class="prop-stats">
+            <div class="prop-stats" ${facing ? 'style="grid-template-columns:repeat(5,1fr)"' : ''}>
               <div class="prop-stat"><div class="prop-stat-val">${p.bhk}</div><div class="prop-stat-label">BHK</div></div>
               <div class="prop-stat"><div class="prop-stat-val">${p.baths}</div><div class="prop-stat-label">Bathrooms</div></div>
               <div class="prop-stat"><div class="prop-stat-val">${p.area.toLocaleString()}</div><div class="prop-stat-label">Sq. Ft.</div></div>
               <div class="prop-stat"><div class="prop-stat-val" style="font-size:1.05rem;padding-top:0.3rem">${p.constructionStatus.split(' ').slice(0,2).join(' ')}</div><div class="prop-stat-label">Status</div></div>
+              ${facing ? `<div class="prop-stat"><div class="prop-stat-val" style="font-size:1.3rem">${facing.icon}</div><div class="prop-stat-label" style="text-transform:capitalize">${facing.key.replace(/-/g,' ')}</div></div>` : ''}
             </div>
 
             <!-- Description -->
