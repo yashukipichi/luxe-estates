@@ -42,9 +42,9 @@
 
   /* ── Facing direction extracted from amenities ── */
   const FACING_LABELS = {
-    'north':'North Facing','south':'South Facing','east':'East Facing','west':'West Facing',
-    'north-east':'North-East Facing','north-west':'North-West Facing',
-    'south-east':'South-East Facing','south-west':'South-West Facing',
+    'north':'North','south':'South','east':'East','west':'West',
+    'north-east':'North-East','north-west':'North-West',
+    'south-east':'South-East','south-west':'South-West',
   };
   function getFacing(amenities) {
     if (!amenities || !amenities.length) return null;
