@@ -489,7 +489,6 @@
       if (v > mx) el.value = mx;
     }
     function update() {
-      clampInput(ls); clampInput(rs); clampInput(ts);
       const P=+ls.value, rate=+rs.value, tenure=+ts.value;
       if (!P || !rate || !tenure) return;
       const emi=calcEMI(P,rate,tenure), total=emi*tenure*12, interest=total-P, ip=(interest/total)*100;
@@ -506,6 +505,11 @@
       else if (ip<=0.01) { ap.setAttribute('d',arc(100,100,80,0,359.99)); ai.setAttribute('d',''); }
       else { const e=ip*3.6; ai.setAttribute('d',arc(100,100,80,0,e)); ap.setAttribute('d',arc(100,100,80,e,360)); }
     }
-    [ls,rs,ts].forEach(s=>s.addEventListener('input',update)); update();
+    // Clamp only on blur so typing intermediate values (e.g. "8" before "8.5") isn't blocked
+    [ls,rs,ts].forEach(s => {
+      s.addEventListener('input', update);
+      s.addEventListener('blur', () => { clampInput(s); update(); });
+    });
+    update();
   }
 })();
