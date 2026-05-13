@@ -6,6 +6,7 @@
   <title>Admin — Luxe Estates</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { background: var(--bg-base); }
 
@@ -249,7 +250,14 @@
 
       <!-- Contacts -->
       <div class="panel" id="panel-contacts">
-        <div class="panel-header"><h2>Contact Enquiries</h2></div>
+        <div class="panel-header">
+          <h2>Contact Enquiries</h2>
+          <button class="btn btn-outline" id="export-contacts-btn" onclick="exportContactsExcel()"
+                  style="font-size:0.85rem;padding:0.6rem 1.1rem;display:flex;align-items:center;gap:0.5rem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Excel
+          </button>
+        </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
@@ -1078,6 +1086,48 @@ function dataUriToBlob(uri) {
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   return new Blob([arr], { type: mime });
 }
+
+/* ══════════════════════════════════════════════════════════════
+   EXPORT CONTACTS → EXCEL
+══════════════════════════════════════════════════════════════ */
+window.exportContactsExcel = function() {
+  const contacts = Object.values(window._contactsMap || {});
+  if (!contacts.length) { alert('No contacts to export.'); return; }
+
+  const rows = contacts.map(c => ({
+    'Name':    c.name    || '',
+    'Email':   c.email   || '',
+    'Phone':   c.phone   || '',
+    'Message': c.message || '',
+    'Status':  c.status  || '',
+    'Date':    c.createdAt ? new Date(c.createdAt).toLocaleString('en-IN') : ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  /* Column widths */
+  ws['!cols'] = [
+    { wch: 22 }, // Name
+    { wch: 30 }, // Email
+    { wch: 16 }, // Phone
+    { wch: 60 }, // Message
+    { wch: 12 }, // Status
+    { wch: 22 }, // Date
+  ];
+
+  /* Bold header row */
+  const headerRange = XLSX.utils.decode_range(ws['!ref']);
+  for (let C = headerRange.s.c; C <= headerRange.e.c; C++) {
+    const cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
+    if (cell) cell.s = { font: { bold: true } };
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Contacts');
+
+  const date = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `luxe-estates-contacts-${date}.xlsx`);
+};
 
 /* ── Boot ── */
 checkSession();

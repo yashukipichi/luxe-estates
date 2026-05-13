@@ -8,7 +8,7 @@
 (function () {
   'use strict';
 
-  const API  = window.location.origin;
+  const API  = "https://luxe-estates-ztev.onrender.com";
   const root = document.getElementById('prop-root');
 
   const AMENITY_ICONS = {
