@@ -41,12 +41,10 @@
   }
 
   /* ── Facing direction extracted from amenities ── */
-  const FACING_ICONS = {
-    'north':'⬆️','south':'⬇️','east':'➡️','west':'⬅️',
-    'north-east':'↗️','north east':'↗️','northeast':'↗️',
-    'north-west':'↖️','north west':'↖️','northwest':'↖️',
-    'south-east':'↘️','south east':'↘️','southeast':'↘️',
-    'south-west':'↙️','south west':'↙️','southwest':'↙️',
+  const FACING_LABELS = {
+    'north':'North Facing','south':'South Facing','east':'East Facing','west':'West Facing',
+    'north-east':'North-East Facing','north-west':'North-West Facing',
+    'south-east':'South-East Facing','south-west':'South-West Facing',
   };
   function getFacing(amenities) {
     if (!amenities || !amenities.length) return null;
@@ -59,7 +57,7 @@
       const m = a.trim().match(STRICT);
       if (m) {
         const k = m[1].toLowerCase().replace(/\s+/g, '-');
-        return { label: a, icon: FACING_ICONS[k] || '🧭', key: k };
+        return { label: a, text: FACING_LABELS[k] || (k.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) + ' Facing'), key: k };
       }
     }
     return null;
@@ -262,7 +260,7 @@
               <div class="prop-stat"><div class="prop-stat-val">${p.baths}</div><div class="prop-stat-label">Bathrooms</div></div>
               <div class="prop-stat"><div class="prop-stat-val">${p.area.toLocaleString()}</div><div class="prop-stat-label">Sq. Ft.</div></div>
               <div class="prop-stat"><div class="prop-stat-val" style="font-size:1.05rem;padding-top:0.3rem">${p.constructionStatus.split(' ').slice(0,2).join(' ')}</div><div class="prop-stat-label">Status</div></div>
-              ${facing ? `<div class="prop-stat"><div class="prop-stat-val" style="font-size:1.3rem">${facing.icon}</div><div class="prop-stat-label" style="text-transform:capitalize">${facing.key.replace(/-/g,' ')}</div></div>` : ''}
+              ${facing ? `<div class="prop-stat"><div class="prop-stat-val" style="font-size:0.92rem;line-height:1.25">${facing.text}</div><div class="prop-stat-label">Facing</div></div>` : ''}
             </div>
 
             <!-- Description -->
