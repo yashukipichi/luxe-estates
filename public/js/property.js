@@ -213,13 +213,13 @@
       </div>` : '';
 
     const brochureHTML = p.brochureUrl ? `
-      <a href="${esc(p.brochureUrl)}" target="_blank" rel="noopener" download class="brochure-btn">
+      <button type="button" onclick="openBrochureViewer('${esc(p.brochureUrl).replace(/'/g,"\\'")}','${esc(p.title).replace(/'/g,"\\'")}')" class="brochure-btn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
         </svg>
-        Download Brochure (PDF)
-      </a>` : '';
+        View Brochure
+      </button>` : '';
 
     root.innerHTML = `
       <div class="container">
@@ -498,6 +498,252 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
+
+  /* ════════════════════════════════════════════
+     PROTECTED BROCHURE VIEWER
+     – Renders PDF page-by-page via canvas (pdf.js)
+     – No download button, no direct PDF link exposed
+     – Right-click, drag, text-select disabled inside viewer
+     – "Luxe Estates Confidential" watermark overlay
+  ════════════════════════════════════════════ */
+  window.openBrochureViewer = function(url, title) {
+    /* Inject modal only once */
+    if (!document.getElementById('bv-modal')) _injectBrochureModal();
+    const modal   = document.getElementById('bv-modal');
+    const titleEl = document.getElementById('bv-title');
+    const canvas  = document.getElementById('bv-canvas');
+    const prevBtn = document.getElementById('bv-prev');
+    const nextBtn = document.getElementById('bv-next');
+    const pageEl  = document.getElementById('bv-page-info');
+    const spinner = document.getElementById('bv-spinner');
+
+    titleEl.textContent = title || 'Brochure';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    /* Load pdf.js from CDN if not already loaded */
+    function loadPdfJs(cb) {
+      if (window.pdfjsLib) { cb(); return; }
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        cb();
+      };
+      document.head.appendChild(s);
+    }
+
+    let pdfDoc = null, curPage = 1, rendering = false;
+
+    function renderPage(num) {
+      if (rendering) return;
+      rendering = true;
+      spinner.style.display = 'flex';
+      pdfDoc.getPage(num).then(page => {
+        const vp     = page.getViewport({ scale: _bvScale(page) });
+        const ctx    = canvas.getContext('2d');
+        canvas.width  = vp.width;
+        canvas.height = vp.height;
+        page.render({ canvasContext: ctx, viewport: vp }).promise.then(() => {
+          _drawWatermark(ctx, vp.width, vp.height);
+          spinner.style.display = 'none';
+          rendering = false;
+          pageEl.textContent = `${num} / ${pdfDoc.numPages}`;
+          prevBtn.disabled = num <= 1;
+          nextBtn.disabled = num >= pdfDoc.numPages;
+        });
+      });
+    }
+
+    loadPdfJs(() => {
+      spinner.style.display = 'flex';
+      canvas.width = 0; canvas.height = 0;
+      window.pdfjsLib.getDocument(url).promise.then(doc => {
+        pdfDoc  = doc;
+        curPage = 1;
+        renderPage(curPage);
+      }).catch(() => {
+        spinner.style.display = 'none';
+        canvas.getContext('2d'); // ensure context exists
+        pageEl.textContent = 'Failed to load brochure.';
+      });
+    });
+
+    prevBtn.onclick = () => { if (curPage > 1) { curPage--; renderPage(curPage); } };
+    nextBtn.onclick = () => { if (pdfDoc && curPage < pdfDoc.numPages) { curPage++; renderPage(curPage); } };
+
+    document.getElementById('bv-close').onclick = _closeBrochureViewer;
+    modal.addEventListener('click', e => { if (e.target === modal) _closeBrochureViewer(); });
+  };
+
+  function _closeBrochureViewer() {
+    const modal = document.getElementById('bv-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function _bvScale(page) {
+    const vp0   = page.getViewport({ scale: 1 });
+    const maxW  = Math.min(window.innerWidth  * 0.88, 820);
+    const maxH  = Math.min(window.innerHeight * 0.80, 900);
+    return Math.min(maxW / vp0.width, maxH / vp0.height, 2.0);
+  }
+
+  function _drawWatermark(ctx, w, h) {
+    ctx.save();
+    /* Diagonal repeating text watermark */
+    ctx.globalAlpha    = 0.10;
+    ctx.fillStyle      = '#8a6a30';
+    ctx.font           = `bold ${Math.round(w * 0.035)}px serif`;
+    ctx.textAlign      = 'center';
+    ctx.textBaseline   = 'middle';
+    const txt  = 'LUXE ESTATES CONFIDENTIAL';
+    const step = Math.round(w * 0.38);
+    const rows = Math.ceil(h / step) + 2;
+    const cols = Math.ceil(w / step) + 2;
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(-Math.PI / 6);
+    for (let r = -rows; r <= rows; r++) {
+      for (let c = -cols; c <= cols; c++) {
+        ctx.fillText(txt, c * step, r * step);
+      }
+    }
+    ctx.restore();
+
+    /* Corner badge */
+    ctx.save();
+    ctx.globalAlpha  = 0.22;
+    ctx.fillStyle    = '#8a6a30';
+    ctx.font         = `600 ${Math.round(w * 0.022)}px sans-serif`;
+    ctx.textAlign    = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('© Luxe Estates — Confidential', w - 10, h - 8);
+    ctx.restore();
+  }
+
+  function _injectBrochureModal() {
+    /* CSS */
+    const style = document.createElement('style');
+    style.textContent = `
+      #bv-modal {
+        display:none; position:fixed; inset:0; z-index:10000;
+        background:rgba(8,7,6,0.92); backdrop-filter:blur(8px);
+        align-items:center; justify-content:center; flex-direction:column;
+        padding:1rem;
+      }
+      #bv-shell {
+        display:flex; flex-direction:column;
+        max-width:860px; width:100%; max-height:96vh;
+        background:var(--bg-card,#141414); border:1px solid rgba(201,169,110,0.2);
+        border-radius:12px; overflow:hidden;
+        box-shadow:0 24px 80px rgba(0,0,0,0.7);
+      }
+      #bv-header {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:0.85rem 1.25rem; border-bottom:1px solid rgba(201,169,110,0.12);
+        background:rgba(201,169,110,0.04); flex-shrink:0;
+      }
+      #bv-header-left { display:flex; align-items:center; gap:0.6rem; }
+      #bv-title {
+        font-family:var(--font-display,serif); font-size:0.95rem;
+        color:var(--gold-light,#e8c97a); max-width:340px;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      }
+      #bv-confidential {
+        font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase;
+        padding:0.2rem 0.6rem; border-radius:4px;
+        background:rgba(201,169,110,0.12); color:var(--gold,#c9a96e);
+        border:1px solid rgba(201,169,110,0.25);
+      }
+      #bv-close {
+        width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+        background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+        border-radius:6px; cursor:pointer; color:rgba(255,255,255,0.6);
+        font-size:1.1rem; line-height:1; transition:background 0.2s, color 0.2s;
+        flex-shrink:0;
+      }
+      #bv-close:hover { background:rgba(255,80,80,0.15); color:#ff6060; }
+      #bv-canvas-wrap {
+        flex:1; overflow:auto; display:flex; align-items:flex-start;
+        justify-content:center; padding:1.25rem; background:#0d0d0d;
+        /* Prevent all interaction that could exfiltrate content */
+        user-select:none; -webkit-user-select:none;
+        -webkit-touch-callout:none;
+      }
+      #bv-canvas { display:block; max-width:100%; border-radius:4px; }
+      #bv-spinner {
+        position:absolute; display:none;
+        align-items:center; justify-content:center; inset:0;
+        background:rgba(13,13,14,0.6); z-index:2;
+      }
+      #bv-spinner-ring {
+        width:40px; height:40px; border-radius:50%;
+        border:3px solid rgba(201,169,110,0.2);
+        border-top-color:var(--gold,#c9a96e);
+        animation:bv-spin 0.8s linear infinite;
+      }
+      @keyframes bv-spin { to { transform:rotate(360deg); } }
+      #bv-footer {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:0.7rem 1.25rem; border-top:1px solid rgba(201,169,110,0.12);
+        background:rgba(201,169,110,0.03); flex-shrink:0; gap:1rem;
+      }
+      #bv-page-info { font-size:0.82rem; color:var(--text-muted,#888); }
+      .bv-nav-btn {
+        padding:0.4rem 1.1rem; font-size:0.82rem; border-radius:6px;
+        border:1px solid rgba(201,169,110,0.3); background:rgba(201,169,110,0.07);
+        color:var(--gold-light,#e8c97a); cursor:pointer; transition:all 0.2s;
+      }
+      .bv-nav-btn:hover:not(:disabled) { background:rgba(201,169,110,0.15); border-color:var(--gold,#c9a96e); }
+      .bv-nav-btn:disabled { opacity:0.35; cursor:not-allowed; }
+      #bv-notice {
+        font-size:0.7rem; color:var(--text-muted,#666);
+        display:flex; align-items:center; gap:0.35rem;
+      }
+    `;
+    document.head.appendChild(style);
+
+    /* HTML */
+    const modal = document.createElement('div');
+    modal.id = 'bv-modal';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.setAttribute('aria-label','Brochure Viewer');
+    modal.innerHTML = `
+      <div id="bv-shell">
+        <div id="bv-header">
+          <div id="bv-header-left">
+            <span id="bv-title">Brochure</span>
+            <span id="bv-confidential">Confidential</span>
+          </div>
+          <button id="bv-close" aria-label="Close viewer">✕</button>
+        </div>
+        <div id="bv-canvas-wrap" style="position:relative">
+          <div id="bv-spinner"><div id="bv-spinner-ring"></div></div>
+          <canvas id="bv-canvas"></canvas>
+        </div>
+        <div id="bv-footer">
+          <div style="display:flex;gap:0.5rem">
+            <button id="bv-prev" class="bv-nav-btn" disabled>← Prev</button>
+            <button id="bv-next" class="bv-nav-btn" disabled>Next →</button>
+          </div>
+          <span id="bv-page-info">Loading…</span>
+          <span id="bv-notice">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            View only — not for distribution
+          </span>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    /* Block right-click and drag inside viewer */
+    const wrap = modal.querySelector('#bv-canvas-wrap');
+    wrap.addEventListener('contextmenu', e => e.preventDefault());
+    wrap.addEventListener('dragstart',   e => e.preventDefault());
+  }
 
   /* ════════════════════════════════════════════
      EMI CALCULATOR
