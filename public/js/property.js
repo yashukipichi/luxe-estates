@@ -260,13 +260,8 @@
               <div class="prop-stat"><div class="prop-stat-val">${p.baths}</div><div class="prop-stat-label">Bathrooms</div></div>
               <div class="prop-stat"><div class="prop-stat-val">${p.area.toLocaleString()}</div><div class="prop-stat-label">Sq. Ft.</div></div>
               <div class="prop-stat"><div class="prop-stat-val" style="font-size:1.05rem;padding-top:0.3rem">${p.constructionStatus.split(' ').slice(0,2).join(' ')}</div><div class="prop-stat-label">Status</div></div>
+              ${facing ? `<div class="prop-stat" style="grid-column:1/-1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:0.65rem;border-top:1px solid var(--border);padding-top:0.85rem;margin-top:0.1rem"><span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted)">Facing</span><span style="width:1px;height:12px;background:var(--border-strong)"></span><span style="font-size:0.92rem;font-weight:600;color:var(--text-primary)">${facing.text}</span></div>` : ''}
             </div>
-            ${facing ? `
-            <div style="display:flex;align-items:center;gap:0.65rem;margin-top:0.75rem;padding:0.6rem 1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm)">
-              <span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap">Facing</span>
-              <span style="width:1px;height:14px;background:var(--border-strong);flex-shrink:0"></span>
-              <span style="font-size:0.88rem;font-weight:600;color:var(--text-primary);letter-spacing:0.02em">${facing.text}</span>
-            </div>` : ''}
 
             <!-- Description -->
             <div class="prop-block">
