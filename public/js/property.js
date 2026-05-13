@@ -42,9 +42,9 @@
 
   /* ── Facing direction extracted from amenities ── */
   const FACING_LABELS = {
-    'north':'North','south':'South','east':'East','west':'West',
-    'north-east':'North-East','north-west':'North-West',
-    'south-east':'South-East','south-west':'South-West',
+    'north':'North Facing','south':'South Facing','east':'East Facing','west':'West Facing',
+    'north-east':'North-East Facing','north-west':'North-West Facing',
+    'south-east':'South-East Facing','south-west':'South-West Facing',
   };
   function getFacing(amenities) {
     if (!amenities || !amenities.length) return null;
@@ -255,13 +255,18 @@
             ${buildGallery(p)}
 
             <!-- Stats -->
-            <div class="prop-stats" ${facing ? 'style="grid-template-columns:repeat(5,1fr)"' : ''}>
+            <div class="prop-stats">
               <div class="prop-stat"><div class="prop-stat-val">${p.bhk}</div><div class="prop-stat-label">BHK</div></div>
               <div class="prop-stat"><div class="prop-stat-val">${p.baths}</div><div class="prop-stat-label">Bathrooms</div></div>
               <div class="prop-stat"><div class="prop-stat-val">${p.area.toLocaleString()}</div><div class="prop-stat-label">Sq. Ft.</div></div>
               <div class="prop-stat"><div class="prop-stat-val" style="font-size:1.05rem;padding-top:0.3rem">${p.constructionStatus.split(' ').slice(0,2).join(' ')}</div><div class="prop-stat-label">Status</div></div>
-              ${facing ? `<div class="prop-stat"><div class="prop-stat-val" style="font-size:0.92rem;line-height:1.25">${facing.text}</div><div class="prop-stat-label">Facing</div></div>` : ''}
             </div>
+            ${facing ? `
+            <div style="display:flex;align-items:center;gap:0.65rem;margin-top:0.75rem;padding:0.6rem 1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm)">
+              <span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap">Facing</span>
+              <span style="width:1px;height:14px;background:var(--border-strong);flex-shrink:0"></span>
+              <span style="font-size:0.88rem;font-weight:600;color:var(--text-primary);letter-spacing:0.02em">${facing.text}</span>
+            </div>` : ''}
 
             <!-- Description -->
             <div class="prop-block">
