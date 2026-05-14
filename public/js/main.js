@@ -145,7 +145,6 @@ function showLeadModal(onSuccess) {
         <span id="lead-btn-text">Show My Properties</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
-      <p style="font-size:0.68rem;color:#2e2d2b">Your details are safe with us. No spam, ever.</p>
     </div>`;
 
   document.body.appendChild(overlay);
