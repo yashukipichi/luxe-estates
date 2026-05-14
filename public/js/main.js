@@ -44,6 +44,12 @@ function initNav() {
    LEAD CAPTURE MODAL
 ════════════════════════════════════════════════════════════ */
 function showLeadModal(onSuccess) {
+  /* If user already verified, skip straight to results */
+  if (localStorage.getItem('luxe_otp_verified') === '1') {
+    onSuccess();
+    return;
+  }
+
   const existing = document.getElementById('lead-modal-overlay');
   if (existing) existing.remove();
 
@@ -315,6 +321,7 @@ function showLeadModal(onSuccess) {
         verBtn.disabled = true;
         verTxt.textContent = 'Verified! ✓';
         verBtn.style.background = '#4caf88';
+        localStorage.setItem('luxe_otp_verified', '1');
 
         /* Show tick animation then close */
         setTimeout(() => {
