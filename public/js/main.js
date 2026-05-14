@@ -155,7 +155,7 @@ function showLeadModal(onSuccess) {
 
     errEl.style.display = 'none';
     btn.disabled = true;
-    btnTxt.textContent = 'Saving…';
+    btnTxt.textContent = 'Sending OTP…';
 
     try {
       await fetch(`${API}/api/leads`, {
@@ -165,9 +165,180 @@ function showLeadModal(onSuccess) {
       });
     } catch (_) { /* non-blocking */ }
 
-    overlay.style.opacity = '0';
-    document.getElementById('lead-modal-box').style.transform = 'scale(0.92) translateY(8px)';
-    setTimeout(() => { overlay.remove(); onSuccess(); }, 300);
+    /* ── Transition to OTP screen inside the same modal box ── */
+    const box = document.getElementById('lead-modal-box');
+    box.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    box.style.opacity    = '0';
+    box.style.transform  = 'scale(0.96) translateY(6px)';
+
+    setTimeout(() => {
+      box.innerHTML = `
+        <div style="
+          width:52px;height:52px;border-radius:50%;
+          background:#1a1810;border:1.5px solid rgba(201,169,110,0.5);
+          display:flex;align-items:center;justify-content:center;
+          margin:0 auto 1rem;
+          font-family:'Cormorant Garamond',Georgia,serif;
+          color:#c9a96e;font-size:1rem;letter-spacing:0.04em;
+        ">Aria</div>
+        <p style="font-size:0.65rem;letter-spacing:0.18em;text-transform:uppercase;color:#5a5752;margin-bottom:1.25rem">
+          Luxe<span style="color:#c9a96e">.</span>Estates
+        </p>
+        <h3 style="font-family:'Cormorant Garamond',Georgia,serif;font-size:1.65rem;font-weight:300;color:#f0ebe2;line-height:1.25;margin-bottom:0.5rem">
+          Verify your number
+        </h3>
+        <p style="font-size:0.84rem;color:#5a5752;line-height:1.65;margin-bottom:0.35rem">
+          We've sent a 6-digit OTP to
+        </p>
+        <p style="font-size:0.9rem;color:#c9a96e;font-weight:500;margin-bottom:1.75rem;letter-spacing:0.03em">
+          ${phone}
+        </p>
+
+        <div id="otp-error" style="display:none;background:rgba(220,60,60,0.12);border:1px solid rgba(220,60,60,0.3);color:#f08080;font-size:0.8rem;border-radius:8px;padding:0.65rem 0.9rem;margin-bottom:0.9rem;text-align:left"></div>
+
+        <!-- Six individual OTP digit boxes -->
+        <div id="otp-boxes" style="display:flex;gap:0.55rem;justify-content:center;margin-bottom:1.5rem">
+          ${[0,1,2,3,4,5].map(i => `
+            <input
+              id="otp-digit-${i}"
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              data-idx="${i}"
+              style="
+                width:44px;height:52px;text-align:center;
+                background:rgba(255,255,255,0.04);
+                border:1px solid rgba(201,169,110,0.25);
+                border-radius:10px;
+                color:#f0ebe2;font-size:1.35rem;font-weight:600;
+                font-family:'DM Sans',sans-serif;
+                outline:none;caret-color:#c9a96e;
+                transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;
+              "
+            >`).join('')}
+        </div>
+
+        <button id="otp-verify-btn" style="
+          width:100%;padding:0.95rem;
+          background:#c9a96e;color:#0d0d0e;
+          border:none;border-radius:10px;
+          font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;
+          letter-spacing:0.04em;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;gap:0.55rem;
+          margin-bottom:0.75rem;
+          transition:background 0.25s,transform 0.2s;
+        ">
+          <span id="otp-btn-text">Verify & Show Properties</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+
+        <p style="font-size:0.68rem;color:#2e2d2b">
+          Didn't get the code? <button id="otp-resend" style="background:none;border:none;color:#c9a96e;font-size:0.68rem;cursor:pointer;padding:0;font-family:inherit;letter-spacing:inherit">Resend OTP</button>
+        </p>`;
+
+      box.style.opacity   = '1';
+      box.style.transform = 'scale(1) translateY(0)';
+
+      /* ── Focus first digit ── */
+      setTimeout(() => document.getElementById('otp-digit-0')?.focus(), 200);
+
+      /* ── OTP digit box keyboard navigation ── */
+      for (let i = 0; i < 6; i++) {
+        const inp = document.getElementById(`otp-digit-${i}`);
+        inp.addEventListener('focus', () => {
+          inp.style.borderColor  = '#c9a96e';
+          inp.style.boxShadow    = '0 0 0 3px rgba(201,169,110,0.15)';
+          inp.style.background   = 'rgba(201,169,110,0.06)';
+        });
+        inp.addEventListener('blur', () => {
+          inp.style.borderColor  = 'rgba(201,169,110,0.25)';
+          inp.style.boxShadow    = 'none';
+          inp.style.background   = 'rgba(255,255,255,0.04)';
+        });
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Backspace' && !inp.value && i > 0) {
+            document.getElementById(`otp-digit-${i-1}`).focus();
+          }
+          if (e.key === 'ArrowLeft' && i > 0)   { e.preventDefault(); document.getElementById(`otp-digit-${i-1}`).focus(); }
+          if (e.key === 'ArrowRight' && i < 5)  { e.preventDefault(); document.getElementById(`otp-digit-${i+1}`).focus(); }
+          if (e.key === 'Enter') verifyOtp();
+        });
+        inp.addEventListener('input', () => {
+          /* Allow only digits */
+          inp.value = inp.value.replace(/\D/g, '').slice(-1);
+          if (inp.value && i < 5) document.getElementById(`otp-digit-${i+1}`).focus();
+        });
+        inp.addEventListener('paste', e => {
+          e.preventDefault();
+          const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+          pasted.split('').forEach((ch, j) => {
+            const d = document.getElementById(`otp-digit-${j}`);
+            if (d) d.value = ch;
+          });
+          const last = Math.min(pasted.length, 5);
+          document.getElementById(`otp-digit-${last}`)?.focus();
+        });
+      }
+
+      /* ── Verify OTP ── */
+      function verifyOtp() {
+        const entered = [0,1,2,3,4,5].map(j => document.getElementById(`otp-digit-${j}`).value).join('');
+        const errEl2  = document.getElementById('otp-error');
+        const verBtn  = document.getElementById('otp-verify-btn');
+        const verTxt  = document.getElementById('otp-btn-text');
+
+        if (entered.length < 6) {
+          errEl2.textContent = 'Please enter the complete 6-digit OTP.';
+          errEl2.style.display = 'block';
+          shakeOtpBoxes();
+          return;
+        }
+
+        const CORRECT_OTP = '123456';
+        if (entered !== CORRECT_OTP) {
+          errEl2.textContent = 'Incorrect OTP. Please try again.';
+          errEl2.style.display = 'block';
+          shakeOtpBoxes();
+          /* Clear boxes and refocus */
+          [0,1,2,3,4,5].forEach(j => {
+            const d = document.getElementById(`otp-digit-${j}`);
+            d.value = '';
+            d.style.borderColor = '#e05a5a';
+            setTimeout(() => { d.style.borderColor = 'rgba(201,169,110,0.25)'; }, 600);
+          });
+          setTimeout(() => document.getElementById('otp-digit-0')?.focus(), 100);
+          return;
+        }
+
+        /* ── OTP correct ── */
+        errEl2.style.display = 'none';
+        verBtn.disabled = true;
+        verTxt.textContent = 'Verified! ✓';
+        verBtn.style.background = '#4caf88';
+
+        /* Show tick animation then close */
+        setTimeout(() => {
+          overlay.style.opacity = '0';
+          box.style.transform   = 'scale(0.92) translateY(8px)';
+          setTimeout(() => { overlay.remove(); onSuccess(); }, 300);
+        }, 600);
+      }
+
+      function shakeOtpBoxes() {
+        const wrap = document.getElementById('otp-boxes');
+        wrap.style.animation = 'nmShake 0.38s ease';
+        setTimeout(() => wrap.style.animation = '', 400);
+      }
+
+      document.getElementById('otp-verify-btn').addEventListener('click', verifyOtp);
+      document.getElementById('otp-resend').addEventListener('click', () => {
+        const resendBtn = document.getElementById('otp-resend');
+        resendBtn.textContent = 'Sent!';
+        resendBtn.style.color = '#4caf88';
+        setTimeout(() => { resendBtn.textContent = 'Resend OTP'; resendBtn.style.color = '#c9a96e'; }, 3000);
+      });
+
+    }, 220);
   }
 
   document.getElementById('lead-submit').addEventListener('click', submitLead);
