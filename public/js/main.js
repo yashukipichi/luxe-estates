@@ -96,8 +96,8 @@ function showLeadModal(onSuccess) {
       <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.25rem">
         <input id="lead-name"  type="text"  placeholder="Full name *"     maxlength="80"
           style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
-        <div class="phone-field-wrap" id="phone-field-wrap">
-          <select id="lead-phone-country" class="phone-country-select">
+        <div class="phone-field-wrap" id="phone-field-wrap" style="display:flex;align-items:stretch;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;overflow:hidden;box-sizing:border-box;transition:border-color 0.25s,box-shadow 0.25s;">
+          <select id="lead-phone-country" class="phone-country-select" style="background:rgba(201,169,110,0.07);border:none;border-right:1px solid rgba(201,169,110,0.18);color:#c9a96e;font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:0 0.6rem;outline:none;cursor:pointer;flex-shrink:0;appearance:none;-webkit-appearance:none;min-width:96px;">
             <option value="IN">🇮🇳 +91</option>
             <option value="US">🇺🇸 +1</option>
             <option value="GB">🇬🇧 +44</option>
@@ -127,7 +127,7 @@ function showLeadModal(onSuccess) {
             <option value="LK">🇱🇰 +94</option>
             <option value="NP">🇳🇵 +977</option>
           </select>
-          <input id="lead-phone-number" type="tel" placeholder="Phone number *" maxlength="15" autocomplete="tel-national">
+          <input id="lead-phone-number" type="tel" placeholder="Phone number *" maxlength="15" autocomplete="tel-national" style="flex:1;background:transparent;border:none;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;width:100%;box-sizing:border-box;">
         </div>
         <input id="lead-email" type="email" placeholder="Email address *" maxlength="120"
           style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
@@ -164,8 +164,8 @@ function showLeadModal(onSuccess) {
   });
   const phoneWrap  = document.getElementById('phone-field-wrap');
   const phoneInput = document.getElementById('lead-phone-number');
-  phoneInput.addEventListener('focus', () => phoneWrap.classList.add('focused'));
-  phoneInput.addEventListener('blur',  () => phoneWrap.classList.remove('focused'));
+  phoneInput.addEventListener('focus', () => { phoneWrap.classList.add('focused'); phoneWrap.style.borderColor = '#c9a96e'; phoneWrap.style.boxShadow = '0 0 0 3px rgba(201,169,110,0.12)'; });
+  phoneInput.addEventListener('blur',  () => { phoneWrap.classList.remove('focused'); phoneWrap.style.borderColor = 'rgba(201,169,110,0.22)'; phoneWrap.style.boxShadow = 'none'; });
   /* Only allow digits, spaces, hyphens */
   phoneInput.addEventListener('input', () => { phoneInput.value = phoneInput.value.replace(/[^\d\s\-]/g, ''); });
 
@@ -207,7 +207,6 @@ function showLeadModal(onSuccess) {
     /* ── Phone check ── */
     let phone = phoneRaw;
     const digitsOnly = phoneRaw.replace(/\D/g, '');
-    /* Try libphonenumber-js if available on window */
     const lib = window.libphonenumber || null;
     if (lib && lib.parsePhoneNumber) {
       try {
@@ -224,7 +223,6 @@ function showLeadModal(onSuccess) {
         phone = parsed.formatInternational();
       } catch (_) { /* fall through to basic check */ }
     }
-    /* Basic fallback: require at least 7 digits */
     if (digitsOnly.length < 7) {
       errEl.textContent = 'Please enter a valid phone number (at least 7 digits).';
       errEl.style.display = 'block';
@@ -424,8 +422,8 @@ function showLeadModal(onSuccess) {
   }
 
   document.getElementById('lead-submit').addEventListener('click', submitLead);
-  ['lead-name','lead-phone','lead-email'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitLead(); });
+  ['lead-name','lead-phone-number','lead-email'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') submitLead(); });
   });
 }
 
