@@ -14,7 +14,7 @@ require('dotenv').config();
 
 /* ── Env validation: refuse to start without required secrets ── */
 if (process.env.NODE_ENV === 'production') {
-  const required = ['MONGODB_URI', 'ADMIN_USERNAME', 'ADMIN_PASSWORD'];
+  const required = ['MONGODB_URI', 'ADMIN_USERNAME', 'ADMIN_PASSWORD', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_FROM'];
   const missing  = required.filter(k => !process.env[k]);
   if (missing.length) {
     console.error(`✗ Missing required env vars: ${missing.join(', ')}`);
@@ -618,6 +618,126 @@ app.get('/api/contact', requireAdmin, async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/* ════════════════════════════════════════════════════════════
+   WHATSAPP OTP — via Twilio
+   Requires env vars:
+     TWILIO_ACCOUNT_SID   — from console.twilio.com
+     TWILIO_AUTH_TOKEN    — from console.twilio.com
+     TWILIO_WHATSAPP_FROM — e.g. "whatsapp:+14155238886" (Twilio sandbox)
+   ════════════════════════════════════════════════════════════ */
+
+/* In-memory OTP store: phone → { otp, expiresAt, attempts } */
+const otpStore = new Map();
+const OTP_TTL_MS      = 10 * 60 * 1000;   // 10 minutes
+const OTP_MAX_TRIES   = 5;
+const OTP_RESEND_WAIT = 60 * 1000;         // 1 minute between resends
+
+/* Clean up expired OTPs every 15 minutes */
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, rec] of otpStore) {
+    if (now > rec.expiresAt) otpStore.delete(key);
+  }
+}, 15 * 60 * 1000);
+
+function generateOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000)); // 6-digit
+}
+
+/* Lazy-init Twilio client so the server still starts without Twilio creds in dev */
+let twilioClient = null;
+function getTwilio() {
+  if (twilioClient) return twilioClient;
+  const sid   = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!sid || !token) throw new Error('Twilio credentials not configured');
+  twilioClient = require('twilio')(sid, token);
+  return twilioClient;
+}
+
+/* Normalise phone → E.164 (+91XXXXXXXXXX for India) */
+function normalisePhone(raw) {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('91') && digits.length === 12) return '+' + digits;
+  if (digits.length === 10) return '+91' + digits;
+  if (raw.startsWith('+')) return '+' + digits;
+  return '+' + digits;
+}
+
+/* POST /api/otp/send — send OTP via WhatsApp */
+app.post('/api/otp/send',
+  rateLimit({ windowMs: 60 * 1000, max: 5, message: 'Too many OTP requests. Please wait a minute.' }),
+  async (req, res) => {
+    try {
+      const { phone, name } = req.body;
+      if (!phone) return res.status(400).json({ success: false, error: 'Phone number is required.' });
+
+      const normPhone = normalisePhone(phone);
+
+      /* Resend guard */
+      const existing = otpStore.get(normPhone);
+      if (existing && Date.now() < existing.sentAt + OTP_RESEND_WAIT) {
+        const wait = Math.ceil((existing.sentAt + OTP_RESEND_WAIT - Date.now()) / 1000);
+        return res.status(429).json({ success: false, error: `Please wait ${wait}s before requesting another OTP.` });
+      }
+
+      const otp = generateOtp();
+      otpStore.set(normPhone, {
+        otp,
+        expiresAt: Date.now() + OTP_TTL_MS,
+        sentAt:    Date.now(),
+        attempts:  0
+      });
+
+      /* Send via Twilio WhatsApp */
+      const from = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886';
+      await getTwilio().messages.create({
+        from,
+        to:   `whatsapp:${normPhone}`,
+        body: `Hi ${name || 'there'}! 👋\n\nYour Luxe Estates verification code is:\n\n*${otp}*\n\nValid for 10 minutes. Do not share this with anyone.\n\n— Luxe Estates Hyderabad`
+      });
+
+      console.log(`✓ OTP sent to WhatsApp ${normPhone}`);
+      res.json({ success: true, message: 'OTP sent via WhatsApp.' });
+    } catch (err) {
+      console.error('OTP send error:', err.message);
+      /* Give a user-friendly message if Twilio is not configured */
+      if (err.message.includes('credentials not configured')) {
+        return res.status(503).json({ success: false, error: 'WhatsApp OTP service is not configured. Contact admin.' });
+      }
+      res.status(500).json({ success: false, error: 'Failed to send OTP. Please try again.' });
+    }
+  }
+);
+
+/* POST /api/otp/verify — verify OTP */
+app.post('/api/otp/verify',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 20, message: 'Too many verification attempts.' }),
+  (req, res) => {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) return res.status(400).json({ success: false, error: 'Phone and OTP are required.' });
+
+    const normPhone = normalisePhone(phone);
+    const rec = otpStore.get(normPhone);
+
+    if (!rec)                          return res.status(400).json({ success: false, error: 'OTP not found. Please request a new one.' });
+    if (Date.now() > rec.expiresAt)  { otpStore.delete(normPhone); return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new one.' }); }
+    if (rec.attempts >= OTP_MAX_TRIES) { otpStore.delete(normPhone); return res.status(400).json({ success: false, error: 'Too many incorrect attempts. Please request a new OTP.' }); }
+
+    rec.attempts++;
+
+    if (rec.otp !== String(otp).trim()) {
+      const left = OTP_MAX_TRIES - rec.attempts;
+      return res.status(400).json({ success: false, error: `Incorrect OTP. ${left} attempt${left !== 1 ? 's' : ''} remaining.` });
+    }
+
+    /* ✓ Valid — delete so it can't be reused */
+    otpStore.delete(normPhone);
+    console.log(`✓ OTP verified for ${normPhone}`);
+    res.json({ success: true, message: 'Phone verified.' });
+  }
+);
 
 /* ── Lead capture — called before showing search results ── */
 app.post('/api/leads', rateLimit({ windowMs: 5 * 60 * 1000, max: 10, message: 'Too many requests' }), async (req, res) => {
