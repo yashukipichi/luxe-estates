@@ -779,11 +779,16 @@ function initConversation() {
   }
 
   function restartConversation() {
-    localStorage.removeItem('customer_name');
-    customerName = '';
+    customerName = customerName || localStorage.getItem('customer_name') || '';
     userFilters  = {};
     section.innerHTML = '';
     document.getElementById('page-footer').style.display = 'none';
+
+    if (customerName) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      startConversation(customerName);
+      return;
+    }
 
     let overlay = document.getElementById('name-modal');
     if (!overlay) {
