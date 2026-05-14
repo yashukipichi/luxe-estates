@@ -41,170 +41,78 @@ function initNav() {
 }
 
 /* ════════════════════════════════════════════════════════════
-   LEAD CAPTURE MODAL  (Step 1: details  →  Step 2: WhatsApp OTP)
+   LEAD CAPTURE MODAL
 ════════════════════════════════════════════════════════════ */
 function showLeadModal(onSuccess) {
   const existing = document.getElementById('lead-modal-overlay');
   if (existing) existing.remove();
 
-  /* ── shared styles injected once ── */
-  if (!document.getElementById('lead-modal-css')) {
-    const s = document.createElement('style');
-    s.id = 'lead-modal-css';
-    s.textContent = `
-      #lead-modal-overlay {
-        position:fixed;inset:0;z-index:10001;
-        background:rgba(0,0,0,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-        display:flex;align-items:center;justify-content:center;padding:1rem;
-        opacity:0;transition:opacity 0.3s ease;
-      }
-      #lead-modal-box {
-        background:#141416;border:1px solid rgba(201,169,110,0.35);border-radius:20px;
-        padding:2.5rem 2rem;max-width:400px;width:100%;text-align:center;
-        box-shadow:0 48px 120px rgba(0,0,0,0.85);
-        transform:scale(0.9) translateY(16px);
-        transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
-      }
-      .lm-aria-badge {
+  const overlay = document.createElement('div');
+  overlay.id = 'lead-modal-overlay';
+  overlay.style.cssText = [
+    'position:fixed','inset:0','z-index:10001',
+    'background:rgba(0,0,0,0.82)','backdrop-filter:blur(16px)',
+    '-webkit-backdrop-filter:blur(16px)',
+    'display:flex','align-items:center','justify-content:center',
+    'padding:1rem','opacity:0','transition:opacity 0.3s ease'
+  ].join(';');
+
+  overlay.innerHTML = `
+    <div id="lead-modal-box" style="
+      background:#141416;
+      border:1px solid rgba(201,169,110,0.35);
+      border-radius:20px;
+      padding:2.5rem 2rem;
+      max-width:400px;width:100%;
+      text-align:center;
+      box-shadow:0 48px 120px rgba(0,0,0,0.85);
+      transform:scale(0.9) translateY(16px);
+      transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    ">
+      <div style="
         width:52px;height:52px;border-radius:50%;
         background:#1a1810;border:1.5px solid rgba(201,169,110,0.5);
         display:flex;align-items:center;justify-content:center;
         margin:0 auto 1rem;
         font-family:'Cormorant Garamond',Georgia,serif;
         color:#c9a96e;font-size:1rem;letter-spacing:0.04em;
-      }
-      .lm-brand { font-size:0.65rem;letter-spacing:0.18em;text-transform:uppercase;color:#5a5752;margin-bottom:1.25rem; }
-      .lm-brand span { color:#c9a96e; }
-      .lm-title { font-family:'Cormorant Garamond',Georgia,serif;font-size:1.65rem;font-weight:300;color:#f0ebe2;line-height:1.25;margin-bottom:0.5rem; }
-      .lm-sub  { font-size:0.84rem;color:#5a5752;line-height:1.65;margin-bottom:1.75rem; }
-      .lm-error {
-        display:none;background:rgba(220,60,60,0.12);border:1px solid rgba(220,60,60,0.3);
-        color:#f08080;font-size:0.8rem;border-radius:8px;padding:0.65rem 0.9rem;
-        margin-bottom:0.9rem;text-align:left;
-      }
-      .lm-input {
-        width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);
-        border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;
-        font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;
-        box-sizing:border-box;transition:border-color 0.25s,box-shadow 0.25s;
-      }
-      .lm-input:focus { border-color:#c9a96e;box-shadow:0 0 0 3px rgba(201,169,110,0.12); }
-      .lm-input-wrap { display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.25rem; }
-      .lm-btn {
-        width:100%;padding:0.95rem;background:#c9a96e;color:#0d0d0e;border:none;border-radius:10px;
-        font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;letter-spacing:0.04em;
-        cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.55rem;
-        margin-bottom:0.75rem;transition:background 0.25s,transform 0.2s,opacity 0.2s;
-      }
-      .lm-btn:hover:not(:disabled) { background:#e0c898;transform:translateY(-1px); }
-      .lm-btn:disabled { opacity:0.55;cursor:not-allowed; }
-      .lm-note { font-size:0.68rem;color:#2e2d2b; }
-
-      /* OTP digit row */
-      .lm-otp-row {
-        display:flex;gap:0.55rem;justify-content:center;margin-bottom:1.25rem;
-      }
-      .lm-otp-digit {
-        width:46px;height:56px;
-        background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.28);
-        border-radius:10px;color:#f0ebe2;
-        font-family:'Cormorant Garamond',Georgia,serif;font-size:1.5rem;font-weight:600;
-        text-align:center;outline:none;caret-color:#c9a96e;
-        transition:border-color 0.2s,box-shadow 0.2s;
-        -moz-appearance:textfield;
-      }
-      .lm-otp-digit::-webkit-outer-spin-button,
-      .lm-otp-digit::-webkit-inner-spin-button { -webkit-appearance:none; }
-      .lm-otp-digit:focus { border-color:#c9a96e;box-shadow:0 0 0 3px rgba(201,169,110,0.12); }
-      .lm-otp-digit.filled { border-color:rgba(201,169,110,0.55); }
-      .lm-otp-digit.error  { border-color:#e05a5a;animation:lmShake 0.35s ease; }
-      @keyframes lmShake {
-        0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)}
-        50%{transform:translateX(5px)} 80%{transform:translateX(-3px)}
-      }
-      .lm-resend-row { display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:1.25rem; }
-      .lm-resend-btn {
-        background:none;border:none;color:#c9a96e;font-family:'DM Sans',sans-serif;
-        font-size:0.8rem;cursor:pointer;padding:0;text-decoration:underline;
-        transition:color 0.2s;
-      }
-      .lm-resend-btn:hover { color:#e0c898; }
-      .lm-resend-btn:disabled { color:#2e2d2b;cursor:not-allowed;text-decoration:none; }
-      .lm-countdown { font-size:0.8rem;color:#5a5752; }
-      .lm-wa-badge {
-        display:inline-flex;align-items:center;gap:0.35rem;
-        font-size:0.72rem;color:#25d366;margin-bottom:1.25rem;
-      }
-      .lm-step { transition:opacity 0.25s,transform 0.25s; }
-      .lm-step.hidden { display:none; }
-    `;
-    document.head.appendChild(s);
-  }
-
-  const overlay = document.createElement('div');
-  overlay.id = 'lead-modal-overlay';
-  overlay.innerHTML = `
-    <div id="lead-modal-box">
-      <div class="lm-aria-badge">Aria</div>
-      <p class="lm-brand">Luxe<span>.</span>Estates</p>
-
-      <!-- ── STEP 1: Details ── -->
-      <div id="lm-step1" class="lm-step">
-        <h3 class="lm-title">Almost there!</h3>
-        <p class="lm-sub">Share your details so our agents can reach out with personalised options.</p>
-        <div id="lm-error1" class="lm-error"></div>
-        <div class="lm-input-wrap">
-          <input id="lead-name"  class="lm-input" type="text"  placeholder="Full name *"    maxlength="80" autocomplete="name">
-          <div style="display:flex;gap:0.6rem;align-items:center">
-            <select id="lead-cc" style="background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 0.75rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;flex-shrink:0;cursor:pointer;transition:border-color 0.25s">
-              <option value="+91">🇮🇳 +91</option>
-              <option value="+1">🇺🇸 +1</option>
-              <option value="+44">🇬🇧 +44</option>
-              <option value="+971">🇦🇪 +971</option>
-              <option value="+65">🇸🇬 +65</option>
-              <option value="+61">🇦🇺 +61</option>
-            </select>
-            <input id="lead-phone" class="lm-input" type="tel" placeholder="Phone number *" maxlength="15" autocomplete="tel-national" style="flex:1">
-          </div>
-          <input id="lead-email" class="lm-input" type="email" placeholder="Email address *" maxlength="120" autocomplete="email">
-        </div>
-        <button id="lead-submit" class="lm-btn">
-          <span id="lead-btn-text">Send WhatsApp OTP</span>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.72 3.36 2 2 0 0 1 3.72 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.09a16 16 0 0 0 6 6l1.06-1.06a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        </button>
-        <p class="lm-note">Your details are safe with us. No spam, ever.</p>
+      ">Aria</div>
+      <p style="font-size:0.65rem;letter-spacing:0.18em;text-transform:uppercase;color:#5a5752;margin-bottom:1.25rem">
+        Luxe<span style="color:#c9a96e">.</span>Estates
+      </p>
+      <h3 style="font-family:'Cormorant Garamond',Georgia,serif;font-size:1.65rem;font-weight:300;color:#f0ebe2;line-height:1.25;margin-bottom:0.5rem">
+        Almost there!
+      </h3>
+      <p style="font-size:0.84rem;color:#5a5752;line-height:1.65;margin-bottom:1.75rem">
+        Share your details so our agents can reach out with personalised options.
+      </p>
+      <div id="lead-error" style="display:none;background:rgba(220,60,60,0.12);border:1px solid rgba(220,60,60,0.3);color:#f08080;font-size:0.8rem;border-radius:8px;padding:0.65rem 0.9rem;margin-bottom:0.9rem;text-align:left"></div>
+      <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.25rem">
+        <input id="lead-name"  type="text"  placeholder="Full name *"     maxlength="80"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
+        <input id="lead-phone" type="tel"   placeholder="Phone number *"  maxlength="20"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
+        <input id="lead-email" type="email" placeholder="Email address *" maxlength="120"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
       </div>
-
-      <!-- ── STEP 2: OTP ── -->
-      <div id="lm-step2" class="lm-step hidden">
-        <h3 class="lm-title">Check WhatsApp</h3>
-        <p class="lm-sub" id="lm-otp-sub">We sent a 6-digit code to your WhatsApp number.</p>
-        <div class="lm-wa-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.524 5.853L0 24l6.335-1.524A11.944 11.944 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.005-1.374l-.359-.213-3.72.895.912-3.628-.234-.372A9.818 9.818 0 0 1 2.182 12C2.182 6.574 6.574 2.182 12 2.182S21.818 6.574 21.818 12 17.426 21.818 12 21.818z"/></svg>
-          Sent via WhatsApp
-        </div>
-        <div id="lm-error2" class="lm-error"></div>
-        <div class="lm-otp-row" id="lm-otp-row">
-          <input class="lm-otp-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" data-idx="0">
-          <input class="lm-otp-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" data-idx="1">
-          <input class="lm-otp-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" data-idx="2">
-          <input class="lm-otp-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" data-idx="3">
-          <input class="lm-otp-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" data-idx="4">
-          <input class="lm-otp-digit" type="number" min="0" max="9" maxlength="1" inputmode="numeric" data-idx="5">
-        </div>
-        <button id="lm-verify-btn" class="lm-btn">
-          <span id="lm-verify-text">Verify & Show Properties</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <div class="lm-resend-row">
-          <button id="lm-resend-btn" class="lm-resend-btn" disabled>Resend OTP</button>
-          <span class="lm-countdown" id="lm-countdown">in <strong id="lm-countdown-num">60</strong>s</span>
-        </div>
-        <button id="lm-back-btn" style="background:none;border:none;color:#5a5752;font-family:'DM Sans',sans-serif;font-size:0.78rem;cursor:pointer;padding:0;letter-spacing:0.05em;transition:color 0.2s" onmouseover="this.style.color='#c9a96e'" onmouseout="this.style.color='#5a5752'">← Change phone number</button>
-      </div>
+      <button id="lead-submit" style="
+        width:100%;padding:0.95rem;
+        background:#c9a96e;color:#0d0d0e;
+        border:none;border-radius:10px;
+        font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;
+        letter-spacing:0.04em;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;gap:0.55rem;
+        margin-bottom:0.75rem;
+        transition:background 0.25s,transform 0.2s;
+      ">
+        <span id="lead-btn-text">Show My Properties</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+      <p style="font-size:0.68rem;color:#2e2d2b">Your details are safe with us. No spam, ever.</p>
     </div>`;
 
   document.body.appendChild(overlay);
+
   requestAnimationFrame(() => {
     overlay.style.opacity = '1';
     document.getElementById('lead-modal-box').style.transform = 'scale(1) translateY(0)';
@@ -212,228 +120,58 @@ function showLeadModal(onSuccess) {
 
   setTimeout(() => document.getElementById('lead-name')?.focus(), 350);
 
-  /* ── Focus/blur styles for detail inputs ── */
-  ['lead-name','lead-phone','lead-email','lead-cc'].forEach(id => {
+  ['lead-name','lead-phone','lead-email'].forEach(id => {
     const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('focus', () => { el.style.borderColor='#c9a96e'; el.style.boxShadow='0 0 0 3px rgba(201,169,110,0.12)'; });
-    el.addEventListener('blur',  () => { el.style.borderColor='rgba(201,169,110,0.22)'; el.style.boxShadow='none'; });
+    el.addEventListener('focus', () => { el.style.borderColor = '#c9a96e'; el.style.boxShadow = '0 0 0 3px rgba(201,169,110,0.12)'; });
+    el.addEventListener('blur',  () => { el.style.borderColor = 'rgba(201,169,110,0.22)'; el.style.boxShadow = 'none'; });
   });
 
-  /* ── Helpers ── */
-  function showError(step, msg) {
-    const el = document.getElementById(`lm-error${step}`);
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-  function clearError(step) {
-    const el = document.getElementById(`lm-error${step}`);
-    el.textContent = '';
-    el.style.display = 'none';
-  }
-  function setStep(n) {
-    document.getElementById('lm-step1').classList.toggle('hidden', n !== 1);
-    document.getElementById('lm-step2').classList.toggle('hidden', n !== 2);
-    if (n === 2) setTimeout(() => document.querySelector('.lm-otp-digit')?.focus(), 200);
-  }
-
-  /* ── OTP digit UX ── */
-  const digits = Array.from(document.querySelectorAll('.lm-otp-digit'));
-  digits.forEach((inp, i) => {
-    inp.addEventListener('input', () => {
-      const v = inp.value.replace(/\D/g, '').slice(-1);
-      inp.value = v;
-      inp.classList.toggle('filled', !!v);
-      if (v && i < 5) digits[i + 1].focus();
-    });
-    inp.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !inp.value && i > 0) { digits[i - 1].focus(); digits[i - 1].value = ''; digits[i - 1].classList.remove('filled'); }
-    });
-    inp.addEventListener('paste', e => {
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-      text.split('').forEach((ch, j) => { if (digits[j]) { digits[j].value = ch; digits[j].classList.add('filled'); } });
-      const next = Math.min(text.length, 5);
-      digits[next].focus();
-    });
-  });
-
-  function getOtpValue() { return digits.map(d => d.value).join(''); }
-
-  function shakeDigits() {
-    digits.forEach(d => { d.classList.add('error'); setTimeout(() => d.classList.remove('error'), 400); });
-  }
-
-  /* ── Countdown timer ── */
-  let countdownTimer = null;
-  function startCountdown(secs = 60) {
-    const numEl   = document.getElementById('lm-countdown-num');
-    const countEl = document.getElementById('lm-countdown');
-    const resend  = document.getElementById('lm-resend-btn');
-    resend.disabled = true;
-    countEl.style.display = '';
-    let remaining = secs;
-    numEl.textContent = remaining;
-    clearInterval(countdownTimer);
-    countdownTimer = setInterval(() => {
-      remaining--;
-      numEl.textContent = remaining;
-      if (remaining <= 0) {
-        clearInterval(countdownTimer);
-        resend.disabled = false;
-        countEl.style.display = 'none';
-      }
-    }, 1000);
-  }
-
-  /* ── STEP 1: Submit details + send OTP ── */
-  let verifiedPhone = '';
-
-  async function submitDetails() {
+  async function submitLead() {
     const name  = document.getElementById('lead-name').value.trim();
-    const cc    = document.getElementById('lead-cc').value;
     const phone = document.getElementById('lead-phone').value.trim();
     const email = document.getElementById('lead-email').value.trim();
-
-    clearError(1);
+    const errEl = document.getElementById('lead-error');
+    const btn   = document.getElementById('lead-submit');
+    const btnTxt= document.getElementById('lead-btn-text');
 
     if (!name || !phone || !email) {
-      showError(1, 'Please fill in all fields.');
+      errEl.textContent = 'Please fill in all fields.';
+      errEl.style.display = 'block';
       ['lead-name','lead-phone','lead-email'].forEach(id => {
         const el = document.getElementById(id);
-        if (!el.value.trim()) { el.style.borderColor = '#e05a5a'; setTimeout(() => { el.style.borderColor = 'rgba(201,169,110,0.22)'; }, 600); }
+        if (!el.value.trim()) {
+          el.style.borderColor = '#e05a5a';
+          el.style.animation = 'nmShake 0.38s ease';
+          setTimeout(() => { el.style.animation = ''; el.style.borderColor = 'rgba(201,169,110,0.22)'; }, 400);
+        }
       });
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError(1, 'Please enter a valid email address.'); return; }
-    if (!/^\d{7,14}$/.test(phone.replace(/\s/g, ''))) { showError(1, 'Please enter a valid phone number.'); return; }
-
-    const fullPhone = cc + phone.replace(/\s/g, '');
-    verifiedPhone   = fullPhone;
-
-    const btn  = document.getElementById('lead-submit');
-    const txt  = document.getElementById('lead-btn-text');
-    btn.disabled = true; txt.textContent = 'Sending OTP…';
-
-    try {
-      const res  = await fetch(`${API}/api/otp/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, name })
-      });
-      const data = await res.json();
-
-      if (!data.success) {
-        showError(1, data.error || 'Failed to send OTP. Please try again.');
-        btn.disabled = false; txt.textContent = 'Send WhatsApp OTP';
-        return;
-      }
-
-      /* Save lead details to server (non-blocking) */
-      fetch(`${API}/api/leads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone: fullPhone, email, filters: userFilters })
-      }).catch(() => {});
-
-      document.getElementById('lm-otp-sub').textContent =
-        `We sent a 6-digit code to ${fullPhone} on WhatsApp.`;
-
-      setStep(2);
-      startCountdown(60);
-    } catch (_) {
-      showError(1, 'Network error. Please check your connection.');
-      btn.disabled = false; txt.textContent = 'Send WhatsApp OTP';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = 'Please enter a valid email address.';
+      errEl.style.display = 'block';
+      return;
     }
-  }
 
-  /* ── STEP 2: Verify OTP ── */
-  async function verifyOtp() {
-    const otp = getOtpValue();
-    clearError(2);
-
-    if (otp.length < 6) { shakeDigits(); showError(2, 'Please enter the complete 6-digit code.'); return; }
-
-    const btn = document.getElementById('lm-verify-btn');
-    const txt = document.getElementById('lm-verify-text');
-    btn.disabled = true; txt.textContent = 'Verifying…';
-
-    try {
-      const res  = await fetch(`${API}/api/otp/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: verifiedPhone, otp })
-      });
-      const data = await res.json();
-
-      if (!data.success) {
-        shakeDigits();
-        showError(2, data.error || 'Incorrect OTP. Please try again.');
-        digits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
-        digits[0].focus();
-        btn.disabled = false; txt.textContent = 'Verify & Show Properties';
-        return;
-      }
-
-      /* ✓ Verified — close and show results */
-      clearInterval(countdownTimer);
-      overlay.style.opacity = '0';
-      document.getElementById('lead-modal-box').style.transform = 'scale(0.93) translateY(8px)';
-      setTimeout(() => { overlay.remove(); onSuccess(); }, 300);
-
-    } catch (_) {
-      showError(2, 'Network error. Please try again.');
-      btn.disabled = false; txt.textContent = 'Verify & Show Properties';
-    }
-  }
-
-  /* ── Resend OTP ── */
-  async function resendOtp() {
-    clearError(2);
-    const name = document.getElementById('lead-name').value.trim();
-    const btn  = document.getElementById('lm-resend-btn');
+    errEl.style.display = 'none';
     btn.disabled = true;
+    btnTxt.textContent = 'Saving…';
 
     try {
-      const res  = await fetch(`${API}/api/otp/send`, {
+      await fetch(`${API}/api/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: verifiedPhone, name })
+        body: JSON.stringify({ name, phone, email, filters: userFilters })
       });
-      const data = await res.json();
-      if (data.success) {
-        digits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
-        digits[0].focus();
-        startCountdown(60);
-        showToast('New OTP sent via WhatsApp', '📲');
-      } else {
-        showError(2, data.error || 'Could not resend OTP.');
-        btn.disabled = false;
-      }
-    } catch (_) {
-      showError(2, 'Network error. Please try again.');
-      btn.disabled = false;
-    }
+    } catch (_) { /* non-blocking */ }
+
+    overlay.style.opacity = '0';
+    document.getElementById('lead-modal-box').style.transform = 'scale(0.92) translateY(8px)';
+    setTimeout(() => { overlay.remove(); onSuccess(); }, 300);
   }
 
-  /* ── Wire events ── */
-  document.getElementById('lead-submit').addEventListener('click', submitDetails);
+  document.getElementById('lead-submit').addEventListener('click', submitLead);
   ['lead-name','lead-phone','lead-email'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitDetails(); });
-  });
-
-  document.getElementById('lm-verify-btn').addEventListener('click', verifyOtp);
-  document.getElementById('lm-resend-btn').addEventListener('click', resendOtp);
-  document.getElementById('lm-back-btn').addEventListener('click', () => {
-    clearError(2); clearError(1); setStep(1);
-    const btn = document.getElementById('lead-submit');
-    const txt = document.getElementById('lead-btn-text');
-    btn.disabled = false; txt.textContent = 'Send WhatsApp OTP';
-  });
-
-  /* Allow Enter key on last OTP digit to submit */
-  digits[5].addEventListener('keydown', e => { if (e.key === 'Enter') verifyOtp(); });
-}
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') submitLead(); });
   });
 }
