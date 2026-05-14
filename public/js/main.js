@@ -96,8 +96,39 @@ function showLeadModal(onSuccess) {
       <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.25rem">
         <input id="lead-name"  type="text"  placeholder="Full name *"     maxlength="80"
           style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
-        <input id="lead-phone" type="tel"   placeholder="Phone number *"  maxlength="20"
-          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
+        <div class="phone-field-wrap" id="phone-field-wrap">
+          <select id="lead-phone-country" class="phone-country-select">
+            <option value="IN">🇮🇳 +91</option>
+            <option value="US">🇺🇸 +1</option>
+            <option value="GB">🇬🇧 +44</option>
+            <option value="AE">🇦🇪 +971</option>
+            <option value="SG">🇸🇬 +65</option>
+            <option value="AU">🇦🇺 +61</option>
+            <option value="CA">🇨🇦 +1</option>
+            <option value="DE">🇩🇪 +49</option>
+            <option value="FR">🇫🇷 +33</option>
+            <option value="JP">🇯🇵 +81</option>
+            <option value="CN">🇨🇳 +86</option>
+            <option value="SA">🇸🇦 +966</option>
+            <option value="QA">🇶🇦 +974</option>
+            <option value="KW">🇰🇼 +965</option>
+            <option value="BH">🇧🇭 +973</option>
+            <option value="OM">🇴🇲 +968</option>
+            <option value="NZ">🇳🇿 +64</option>
+            <option value="ZA">🇿🇦 +27</option>
+            <option value="NG">🇳🇬 +234</option>
+            <option value="KE">🇰🇪 +254</option>
+            <option value="MY">🇲🇾 +60</option>
+            <option value="ID">🇮🇩 +62</option>
+            <option value="PH">🇵🇭 +63</option>
+            <option value="TH">🇹🇭 +66</option>
+            <option value="BD">🇧🇩 +880</option>
+            <option value="PK">🇵🇰 +92</option>
+            <option value="LK">🇱🇰 +94</option>
+            <option value="NP">🇳🇵 +977</option>
+          </select>
+          <input id="lead-phone-number" type="tel" placeholder="Phone number *" maxlength="15" autocomplete="tel-national">
+        </div>
         <input id="lead-email" type="email" placeholder="Email address *" maxlength="120"
           style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(201,169,110,0.22);border-radius:10px;padding:0.85rem 1rem;color:#f0ebe2;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;box-sizing:border-box;transition:border-color 0.25s">
       </div>
@@ -126,36 +157,72 @@ function showLeadModal(onSuccess) {
 
   setTimeout(() => document.getElementById('lead-name')?.focus(), 350);
 
-  ['lead-name','lead-phone','lead-email'].forEach(id => {
+  ['lead-name','lead-email'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('focus', () => { el.style.borderColor = '#c9a96e'; el.style.boxShadow = '0 0 0 3px rgba(201,169,110,0.12)'; });
     el.addEventListener('blur',  () => { el.style.borderColor = 'rgba(201,169,110,0.22)'; el.style.boxShadow = 'none'; });
   });
+  const phoneWrap  = document.getElementById('phone-field-wrap');
+  const phoneInput = document.getElementById('lead-phone-number');
+  phoneInput.addEventListener('focus', () => phoneWrap.classList.add('focused'));
+  phoneInput.addEventListener('blur',  () => phoneWrap.classList.remove('focused'));
+  /* Only allow digits, spaces, hyphens */
+  phoneInput.addEventListener('input', () => { phoneInput.value = phoneInput.value.replace(/[^\d\s\-]/g, ''); });
 
   async function submitLead() {
-    const name  = document.getElementById('lead-name').value.trim();
-    const phone = document.getElementById('lead-phone').value.trim();
-    const email = document.getElementById('lead-email').value.trim();
-    const errEl = document.getElementById('lead-error');
-    const btn   = document.getElementById('lead-submit');
-    const btnTxt= document.getElementById('lead-btn-text');
+    const name    = document.getElementById('lead-name').value.trim();
+    const country = document.getElementById('lead-phone-country').value;
+    const phoneRaw= document.getElementById('lead-phone-number').value.trim();
+    const email   = document.getElementById('lead-email').value.trim();
+    const errEl   = document.getElementById('lead-error');
+    const btn     = document.getElementById('lead-submit');
+    const btnTxt  = document.getElementById('lead-btn-text');
 
-    if (!name || !phone || !email) {
+    function shakeField(el) {
+      el.style.animation = 'nmShake 0.38s ease';
+      setTimeout(() => el.style.animation = '', 400);
+    }
+    function markError(el) { el.style.borderColor = '#e05a5a'; shakeField(el); }
+    function clearError(el) { el.style.borderColor = 'rgba(201,169,110,0.22)'; }
+
+    /* ── Empty check ── */
+    if (!name || !phoneRaw || !email) {
       errEl.textContent = 'Please fill in all fields.';
       errEl.style.display = 'block';
-      ['lead-name','lead-phone','lead-email'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el.value.trim()) {
-          el.style.borderColor = '#e05a5a';
-          el.style.animation = 'nmShake 0.38s ease';
-          setTimeout(() => { el.style.animation = ''; el.style.borderColor = 'rgba(201,169,110,0.22)'; }, 400);
-        }
-      });
+      if (!name)     { markError(document.getElementById('lead-name')); setTimeout(() => clearError(document.getElementById('lead-name')), 400); }
+      if (!phoneRaw) { document.getElementById('phone-field-wrap').classList.add('error'); shakeField(document.getElementById('lead-phone-number')); setTimeout(() => document.getElementById('phone-field-wrap').classList.remove('error'), 400); }
+      if (!email)    { markError(document.getElementById('lead-email')); setTimeout(() => clearError(document.getElementById('lead-email')), 400); }
       return;
     }
+
+    /* ── Email check ── */
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errEl.textContent = 'Please enter a valid email address.';
       errEl.style.display = 'block';
+      markError(document.getElementById('lead-email'));
+      setTimeout(() => clearError(document.getElementById('lead-email')), 600);
+      return;
+    }
+
+    /* ── Phone check via libphonenumber-js ── */
+    let phone = phoneRaw;
+    try {
+      const parsed = window.libphonenumber.parsePhoneNumber(phoneRaw, country);
+      if (!parsed.isValid()) {
+        errEl.textContent = `Please enter a valid phone number for the selected country (e.g. ${window.libphonenumber.getExampleNumber(country)?.formatNational() || '98765 43210'}).`;
+        errEl.style.display = 'block';
+        document.getElementById('phone-field-wrap').classList.add('error');
+        shakeField(document.getElementById('lead-phone-number'));
+        setTimeout(() => document.getElementById('phone-field-wrap').classList.remove('error'), 600);
+        return;
+      }
+      phone = parsed.formatInternational(); /* store in E.164-friendly format */
+    } catch {
+      errEl.textContent = 'Please enter a valid phone number including your area code.';
+      errEl.style.display = 'block';
+      document.getElementById('phone-field-wrap').classList.add('error');
+      shakeField(document.getElementById('lead-phone-number'));
+      setTimeout(() => document.getElementById('phone-field-wrap').classList.remove('error'), 600);
       return;
     }
 
